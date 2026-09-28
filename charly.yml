@@ -1,7 +1,5 @@
-version: 2026.232.0520
 nodejs:
     candy:
-        version: 2026.226.1600
         description: |
             A Node.js runtime with the npm and pnpm package managers on the default PATH.
             Installs the distro nodejs package (NodeSource node 22.x on Ubuntu and
