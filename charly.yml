@@ -152,27 +152,36 @@ nodejs:
               # that a RED check on the bump instead. It asserts only what was MEASURED (the
               # two probed versions), never an extrapolated boundary: any other pin fails
               # loudly and asks the author to re-measure and record the form here.
-              # No `${...}` anywhere: a check step's command goes through charly's variable
-              # substitution, which would read `${X}` as a charly variable and SKIP the step
-              # on an unresolved one. `var:` values are exported as ENV before this step, so
-              # plain `$NAME` reads them through the shell and always runs.
+              #
+              # ZERO `${...}` and ZERO `$` ANYWHERE in this command, deliberately: a check
+              # step's command goes through charly's variable substitution, which reads
+              # `${X}` as a charly variable and SKIPS the whole step when it cannot resolve
+              # one — trading a red check for a silently absent one, which is exactly the
+              # silent-no-op class this assertion exists to prevent. `var:` values are
+              # exported as ENV before this step, so the script reads them with
+              # `process.env[...]` and the messages are built by CONCATENATION, never by a
+              # template literal. The grep that proves it: `grep -c '\$'` over this command
+              # returns 0, so substitution has no token to act on and the step cannot be
+              # skipped.
               check: the pinned pnpm version's allowBuilds git-key form matches the recorded measurement
               exit_status: 0
               command: |
                 node -e '
-                  const [version, form, bare, url] = ["PNPM_VERSION", "PNPM_ALLOWBUILDS_GIT_KEY_FORM", "PNPM_ALLOWBUILDS_PROBED_BARE", "PNPM_ALLOWBUILDS_PROBED_URL"].map((k) => process.env[k] ?? "");
-                  if (!version || !form || !bare || !url) { console.error("the pnpm pin band vars are not all exported"); process.exit(1); }
-                  const measured = new Map([[bare, "bare"], [url, "url"]]);
-                  const want = measured.get(version);
+                  const keys = ["PNPM_VERSION", "PNPM_ALLOWBUILDS_GIT_KEY_FORM", "PNPM_ALLOWBUILDS_PROBED_BARE", "PNPM_ALLOWBUILDS_PROBED_URL"];
+                  const values = keys.map((k) => process.env[k] || "");
+                  const missing = keys.filter((k) => !process.env[k]);
+                  if (missing.length > 0) { console.error("these pnpm pin band vars are not exported: " + missing.join(", ")); process.exit(1); }
+                  const measured = new Map([[values[2], "bare"], [values[3], "url"]]);
+                  const want = measured.get(values[0]);
                   if (want === undefined) {
-                    console.error(`pnpm ${version} is UNMEASURED for the allowBuilds git-key form. Bump only with a measurement: run a consumer profile that installs a git-specifier dep with a build script and record which form passes, then move PNPM_ALLOWBUILDS_GIT_KEY_FORM and the PROBED_* pair together (opencharly/layer-nodejs#5).`);
+                    console.error("pnpm " + values[0] + " is UNMEASURED for the allowBuilds git-key form. Bump only with a measurement: run a consumer profile that installs a git-specifier dep with a build script and record which form passes, then move PNPM_ALLOWBUILDS_GIT_KEY_FORM and the PROBED_* pair together (opencharly/layer-nodejs#5).");
                     process.exit(1);
                   }
-                  if (form !== want) {
-                    console.error(`pnpm ${version} requires the allowBuilds git-key form "${want}", but PNPM_ALLOWBUILDS_GIT_KEY_FORM is "${form}" (opencharly/layer-nodejs#5)`);
+                  if (values[1] !== want) {
+                    console.error("pnpm " + values[0] + " requires the allowBuilds git-key form \"" + want + "\", but PNPM_ALLOWBUILDS_GIT_KEY_FORM is \"" + values[1] + "\" (opencharly/layer-nodejs#5)");
                     process.exit(1);
                   }
-                  console.log(`pnpm ${version}: allowBuilds git-key form "${form}" matches the recorded measurement`);
+                  console.log("pnpm " + values[0] + ": allowBuilds git-key form \"" + values[1] + "\" matches the recorded measurement");
                 '
 
 nodejs-skill:
