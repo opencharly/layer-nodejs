@@ -15,7 +15,7 @@ with a working `--version`, so the runtime is directly verifiable.
 |---|---|
 | Layer / candy | `nodejs` |
 | Binaries | `/usr/bin/node`, `/usr/bin/npm`, `/usr/local/bin/pnpm` |
-| Pinned pnpm | `PNPM_VERSION` `10.33.4` |
+| Pinned pnpm | `PNPM_VERSION` `10.34.6` |
 | Env | `NPM_CONFIG_PREFIX=~/.npm-global`; `~/.npm-global/bin` on `PATH` |
 | Service / port | none |
 
