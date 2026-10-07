@@ -118,6 +118,17 @@ nodejs:
               # with it and hand the result to env(1).
               command: |
                 env HOME="$(getent passwd "$(id -u)" | cut -d: -f6)" pnpm --version
+            - # The pnpm floor consumers depend on: 10.33.4 cannot accept the
+              # fully-qualified `allowBuilds` key that pnpm itself prints for a
+              # git-hosted dependency (ERR_PNPM_INVALID_VERSION_UNION), which breaks
+              # a DSH profile installing its git-hosted plugins (pod-dsh's dsh-web),
+              # and it ships no node-gyp for native addon builds. Assert the installed
+              # binary is at least 10.34.6 so a regression of PNPM_VERSION fails THIS
+              # check (it passes at 10.34.6, fails at 10.33.4).
+              check: the installed pnpm is at least 10.34.6 (the git-hosted allowBuilds key floor)
+              exit_status: 0
+              command: |
+                env HOME="$(getent passwd "$(id -u)" | cut -d: -f6)" pnpm --version | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const [maj,min]=s.trim().split(".").map(Number);if(maj>10||(maj===10&&min>=34))process.exit(0);process.exit(1)})'
             - check: package=nodejs
               id: nodejs-package
               package:
